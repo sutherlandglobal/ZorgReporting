@@ -8,10 +8,10 @@
 <%@ page import="java.util.Collections" %>
 <%@ page import="java.util.List" %>
 <%@ page import="java.util.ArrayList" %>
-<%@ page import="zorg.constants.Constants" %>
+<%@ page import="zorg.site.SiteConfig" %>
 <%!
 String testPrefix = "TEST-"; 
-String testDir = Constants.PLATFORM_DIR + "/webapps/" + Constants.HELIOS_SITE_NAME+ "/test/";
+String testDir = SiteConfig.PLATFORM_DIR + "/webapps/" + SiteConfig.HELIOS_SITE_NAME+ "/test/";
 String testCasePrefix = "Testcase: ";
 String testRunPrefix = "Tests run: ";
 %>
@@ -50,7 +50,7 @@ if(dir.exists())
 			String testName = getTestNameFromFileName(fileName);
 			
 			/*
-			Testsuite: test.ConstantsTest
+			Testsuite: test.SiteConfigTest
 			Tests run: 4, Failures: 0, Errors: 0, Time elapsed: 0.008 sec
 
 			Testcase: testGetInstance took 0.007 sec
