@@ -6,6 +6,7 @@ package zorg.report;
 
 import helios.api.report.frontend.ReportFrontEndGroups;
 import helios.data.Aggregation;
+import helios.data.attributes.DataAttributes;
 import helios.data.granularity.time.TimeGrains;
 import helios.data.granularity.user.UserGrains;
 import helios.database.connection.SQL.ConnectionFactory;
@@ -28,18 +29,17 @@ import org.apache.log4j.Level;
 import org.apache.log4j.Logger;
 import org.apache.log4j.MDC;
 
-import zorg.constants.Constants;
+import zorg.datasources.DatabaseConfigs;
 
 /**
  * @author Jason Diamond
  *
  */
-public final class RealtimeSales extends Report
+public final class RealtimeSales extends Report implements DataAttributes
 {
 	private RemoteConnection dbConnection;
 	private ZorgRoster roster;
-	private final static String ORDER_AMTS_ATTR = "orderAmounts";
-	private final String dbPropFile = Constants.PRIVATE_LABEL_PROD_DB;
+	private final String dbPropFile = DatabaseConfigs.PRIVATE_LABEL_PROD_DB;
 	private final static Logger logger = Logger.getLogger(RealtimeSales.class);
 
 	public static String uiGetReportName()
@@ -172,7 +172,7 @@ public final class RealtimeSales extends Report
 
 		Aggregation reportGrainData = new Aggregation();
 
-		String userID, reportGrain, orderAmounts;
+		String userID, reportGrain, salesAmount;
 		
 		//don't assign time grain just yet. in case this is a non-time report, because the timegrain param is not guaranteed to be set 
 		int timeGrain, userGrain;
@@ -187,7 +187,7 @@ public final class RealtimeSales extends Report
 
 			if(roster.hasUser(userID) )
 			{
-				orderAmounts = row[2];
+				salesAmount = row[2];
 				
 				//time grain for time reports
 				if(isTimeTrendReport())
@@ -202,8 +202,8 @@ public final class RealtimeSales extends Report
 				}
 				
 				reportGrainData.addDatum(reportGrain);
-				reportGrainData.getDatum(reportGrain).addAttribute(ORDER_AMTS_ATTR);
-				reportGrainData.getDatum(reportGrain).addData(ORDER_AMTS_ATTR, orderAmounts);
+				reportGrainData.getDatum(reportGrain).addAttribute(SALES_AMTS_ATTR);
+				reportGrainData.getDatum(reportGrain).addData(SALES_AMTS_ATTR, salesAmount);
 			}
 		}
 		
@@ -217,7 +217,7 @@ public final class RealtimeSales extends Report
 		retval = new ArrayList<String[]>();
 		for(String grain : reportGrainData.getDatumIDList())
 		{
-			finalSales = Statistics.getTotal(reportGrainData.getDatum(grain).getAttributeData(ORDER_AMTS_ATTR));
+			finalSales = Statistics.getTotal(reportGrainData.getDatum(grain).getAttributeData(SALES_AMTS_ATTR));
 
 			retval.add(new String[]{grain, NumberFormatter.convertToCurrency(finalSales) });
 		}

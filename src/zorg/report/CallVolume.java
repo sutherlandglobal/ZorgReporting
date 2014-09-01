@@ -5,6 +5,7 @@ package zorg.report;
 
 import helios.api.report.frontend.ReportFrontEndGroups;
 import helios.data.Aggregation;
+import helios.data.attributes.DataAttributes;
 import helios.data.granularity.time.TimeGrains;
 import helios.data.granularity.user.UserGrains;
 import helios.database.connection.SQL.ConnectionFactory;
@@ -26,18 +27,17 @@ import org.apache.log4j.Level;
 import org.apache.log4j.Logger;
 import org.apache.log4j.MDC;
 
-import zorg.constants.Constants;
+import zorg.datasources.DatabaseConfigs;
 
 /**
  * @author Jason Diamond
  *
  */
-public final class CallVolume extends Report 
+public final class CallVolume extends Report implements DataAttributes
 {
 	private RemoteConnection dbConnection;
-	private final static String CALL_VOL_ATTR = "callVol";
 	private ZorgRoster roster;
-	private final String dbPropFile = Constants.PRIVATE_LABEL_PROD_DB;
+	private final String dbPropFile = DatabaseConfigs.PRIVATE_LABEL_PROD_DB;
 	private final static Logger logger = Logger.getLogger(CallVolume.class);
 
 	public static String uiGetReportName()

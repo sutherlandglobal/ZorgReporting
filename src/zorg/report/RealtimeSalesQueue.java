@@ -26,7 +26,7 @@ import org.apache.log4j.Level;
 import org.apache.log4j.Logger;
 import org.apache.log4j.MDC;
 
-import zorg.constants.Constants;
+import zorg.datasources.DatabaseConfigs;
 
 /**
  * @author Jason Diamond
@@ -37,7 +37,7 @@ public final class RealtimeSalesQueue extends Report
 	private RemoteConnection dbConnection;
 	private ZorgRoster roster;
 
-	private final static String dbPropFile = Constants.PRIVATE_LABEL_PROD_DB;
+	private final static String dbPropFile = DatabaseConfigs.PRIVATE_LABEL_PROD_DB;
 	
 	private final static Logger logger = Logger.getLogger(RealtimeSalesQueue.class);
 
