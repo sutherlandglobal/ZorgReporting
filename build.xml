@@ -229,7 +229,7 @@
 		<exec executable="/bin/date" />
 	</target>
 	
-	<target name="nuke">
-		
+	<target name="nuke" depends="clean">
+		<delete dir="${SITE_SRC_DIR}"/>
 	</target>
 </project>
