@@ -1,18 +1,8 @@
 /**
  * 
  */
-package zorg.report;
+package com.sutherland.zorg.report;
 
-
-import helios.api.report.frontend.ReportFrontEndGroups;
-import helios.database.connection.DatabaseConnection;
-import helios.database.connection.SQL.ConnectionFactory;
-import helios.exceptions.DatabaseConnectionCreationException;
-import helios.exceptions.ExceptionFormatter;
-import helios.exceptions.ReportSetupException;
-import helios.logging.LogIDFactory;
-import helios.report.Report;
-import helios.report.parameters.groups.ReportParameterGroups;
 
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -23,7 +13,16 @@ import org.apache.log4j.Level;
 import org.apache.log4j.Logger;
 import org.apache.log4j.MDC;
 
-import zorg.datasources.DatabaseConfigs;
+import com.sutherland.helios.api.report.frontend.ReportFrontEndGroups;
+import com.sutherland.helios.database.connection.DatabaseConnection;
+import com.sutherland.helios.database.connection.SQL.ConnectionFactory;
+import com.sutherland.helios.exceptions.DatabaseConnectionCreationException;
+import com.sutherland.helios.exceptions.ExceptionFormatter;
+import com.sutherland.helios.exceptions.ReportSetupException;
+import com.sutherland.helios.logging.LogIDFactory;
+import com.sutherland.helios.report.Report;
+import com.sutherland.helios.report.parameters.groups.ReportParameterGroups;
+import com.sutherland.zorg.datasources.DatabaseConfigs;
 
 
 /**

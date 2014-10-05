@@ -1,23 +1,7 @@
 /**
  * 
  */
-package zorg.report;
-
-import helios.api.report.frontend.ReportFrontEndGroups;
-import helios.data.Aggregation;
-import helios.data.attributes.DataAttributes;
-import helios.data.granularity.time.TimeGrains;
-import helios.data.granularity.user.UserGrains;
-import helios.database.connection.SQL.ConnectionFactory;
-import helios.database.connection.SQL.RemoteConnection;
-import helios.date.parsing.DateParser;
-import helios.exceptions.DatabaseConnectionCreationException;
-import helios.exceptions.ExceptionFormatter;
-import helios.exceptions.ReportSetupException;
-import helios.logging.LogIDFactory;
-import helios.report.Report;
-import helios.report.parameters.groups.ReportParameterGroups;
-import helios.statistics.Statistics;
+package com.sutherland.zorg.report;
 
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -27,7 +11,22 @@ import org.apache.log4j.Level;
 import org.apache.log4j.Logger;
 import org.apache.log4j.MDC;
 
-import zorg.datasources.DatabaseConfigs;
+import com.sutherland.helios.api.report.frontend.ReportFrontEndGroups;
+import com.sutherland.helios.data.Aggregation;
+import com.sutherland.helios.data.attributes.DataAttributes;
+import com.sutherland.helios.data.granularity.user.UserGrains;
+import com.sutherland.helios.database.connection.SQL.ConnectionFactory;
+import com.sutherland.helios.database.connection.SQL.RemoteConnection;
+import com.sutherland.helios.date.formatting.DateFormatter;
+import com.sutherland.helios.date.parsing.DateParser;
+import com.sutherland.helios.exceptions.DatabaseConnectionCreationException;
+import com.sutherland.helios.exceptions.ExceptionFormatter;
+import com.sutherland.helios.exceptions.ReportSetupException;
+import com.sutherland.helios.logging.LogIDFactory;
+import com.sutherland.helios.report.Report;
+import com.sutherland.helios.report.parameters.groups.ReportParameterGroups;
+import com.sutherland.helios.statistics.Statistics;
+import com.sutherland.zorg.datasources.DatabaseConfigs;
 
 /**
  * @author Jason Diamond
@@ -211,9 +210,9 @@ public final class CallVolume extends Report implements DataAttributes
 		
 		Aggregation reportGrainData = new Aggregation();
 
-		String userID, reportGrain, numCalls, rowDate;
+		String userID, reportGrain, numCalls;
 		
-		int timeGrain, userGrain;
+		int timeGrain, userGrain, dateFormat;
 		
 		roster = new ZorgRoster();
 		roster.setChildReport(true);
@@ -228,14 +227,14 @@ public final class CallVolume extends Report implements DataAttributes
 			
 			if(roster.hasUser(userID))
 			{
-				rowDate = row[1];
 				numCalls = row[2];
 
 				//time grain for time reports
 				if(isTimeTrendReport())
 				{
 					timeGrain = Integer.parseInt(getParameters().getTimeGrain());
-					reportGrain = TimeGrains.getDateGrain(timeGrain, DateParser.convertSQLDateToGregorian(rowDate));
+					dateFormat = Integer.parseInt(getParameters().getDateFormat());
+					reportGrain = DateFormatter.getFormattedDate(DateParser.convertSQLDateToGregorian(row[1]), timeGrain, dateFormat);
 				}
 				else //if(isStackReport())
 				{

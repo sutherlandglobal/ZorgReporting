@@ -1,4 +1,4 @@
-package zorg.report.roster;
+package com.sutherland.zorg.report.roster;
 
 public interface Attributes 
 {

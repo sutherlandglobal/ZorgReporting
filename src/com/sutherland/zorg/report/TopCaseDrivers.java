@@ -1,25 +1,8 @@
 /**
  * 
  */
-package zorg.report;
+package com.sutherland.zorg.report;
 
-
-import helios.api.report.frontend.ReportFrontEndGroups;
-import helios.data.Aggregation;
-import helios.data.attributes.DataAttributes;
-import helios.data.granularity.time.TimeGrains;
-import helios.data.granularity.user.UserGrains;
-import helios.database.connection.SQL.ConnectionFactory;
-import helios.database.connection.SQL.RemoteConnection;
-import helios.date.parsing.DateParser;
-import helios.exceptions.DatabaseConnectionCreationException;
-import helios.exceptions.ExceptionFormatter;
-import helios.exceptions.ReportSetupException;
-import helios.formatting.NumberFormatter;
-import helios.logging.LogIDFactory;
-import helios.report.Report;
-import helios.report.parameters.groups.ReportParameterGroups;
-import helios.statistics.Statistics;
 
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -29,39 +12,53 @@ import org.apache.log4j.Level;
 import org.apache.log4j.Logger;
 import org.apache.log4j.MDC;
 
-import zorg.datasources.DatabaseConfigs;
+import com.sutherland.helios.api.report.frontend.ReportFrontEndGroups;
+import com.sutherland.helios.data.Aggregation;
+import com.sutherland.helios.database.connection.SQL.ConnectionFactory;
+import com.sutherland.helios.database.connection.SQL.RemoteConnection;
+import com.sutherland.helios.date.formatting.DateFormatter;
+import com.sutherland.helios.date.parsing.DateParser;
+import com.sutherland.helios.exceptions.DatabaseConnectionCreationException;
+import com.sutherland.helios.exceptions.ExceptionFormatter;
+import com.sutherland.helios.exceptions.ReportSetupException;
+import com.sutherland.helios.logging.LogIDFactory;
+import com.sutherland.helios.report.Report;
+import com.sutherland.helios.report.parameters.groups.ReportParameterGroups;
+import com.sutherland.helios.util.results.Filter;
+import com.sutherland.zorg.datasources.DatabaseConfigs;
+
 
 /**
  * @author Jason Diamond
  *
  */
-public final class RealtimeSales extends Report implements DataAttributes
+public class TopCaseDrivers extends Report
 {
 	private RemoteConnection dbConnection;
 	private ZorgRoster roster;
 	private final String dbPropFile = DatabaseConfigs.PRIVATE_LABEL_PROD_DB;
-	private final static Logger logger = Logger.getLogger(RealtimeSales.class);
-
+	private final static Logger logger = Logger.getLogger(TopCaseDrivers.class);
+	
 	public static String uiGetReportName()
 	{
-		return "Realtime Sales";
+		return "Top Case Drivers";
 	}
 	
 	public static String uiGetReportDesc()
 	{
-		return "Trends the total dollar value of sales.";
+		return "Determines the most common case categories.";
 	}
 	
 	public final static LinkedHashMap<String, String> uiSupportedReportFrontEnds = ReportFrontEndGroups.BASIC_METRIC_FRONTENDS;
 	
-	public final static LinkedHashMap<String, ArrayList<String>> uiReportParameters = ReportParameterGroups.BASIC_METRIC_REPORT_PARAMETERS;
+	public final static LinkedHashMap<String, ArrayList<String>> uiReportParameters = ReportParameterGroups.DRIVERS_REPORT_PARAMETERS;
 	
 	/**
 	 * Build the report object.
 	 * 
 	 * @throws ReportSetupException		If a failure occurs during creation of the report or its resources.
 	 */
-	public RealtimeSales() throws ReportSetupException
+	public TopCaseDrivers() throws ReportSetupException
 	{
 		super();
 	}
@@ -76,11 +73,8 @@ public final class RealtimeSales extends Report implements DataAttributes
 
 		try
 		{
-			roster = new ZorgRoster();
-			roster.setChildReport(true);
-			
-			reportName = RealtimeSales.uiGetReportName();
-			reportDesc = RealtimeSales.uiGetReportDesc();
+			reportName = TopCaseDrivers.uiGetReportName();
+			reportDesc = TopCaseDrivers.uiGetReportDesc();
 			
 			for(Entry<String, ArrayList<String>> reportType : uiReportParameters.entrySet())
 			{
@@ -131,7 +125,7 @@ public final class RealtimeSales extends Report implements DataAttributes
 			factory.load(dbPropFile);
 			
 			dbConnection = factory.getConnection();
-		}
+		} 
 		catch(DatabaseConnectionCreationException e )
 		{
 			setErrorMessage("DatabaseConnectionCreationException on attempt to access database");
@@ -151,59 +145,50 @@ public final class RealtimeSales extends Report implements DataAttributes
 	}
 
 	/* (non-Javadoc)
-	 * @see helios.Report#runReport()
+	 * @see helios.Report#runReport(java.lang.String, java.lang.String)
 	 */
 	@Override
-	protected ArrayList<String[]> runReport() 
+	protected ArrayList<String[]> runReport() throws Exception
 	{
-		ArrayList<String[]> retval = null;
-
-		String ordersQuery = "SELECT " +
-				" CRM_MST_USER.USER_USERID,CRM_TRN_ORDERDETAILS.ORDDET_CREATEDDATE, " +
-				" CRM_TRN_ORDERDETAILS.ORDDET_AMOUNT " + 
-				" FROM CRM_MST_USER INNER JOIN CRM_TRN_ORDERDETAILS ON CRM_MST_USER.USER_USERID = CRM_TRN_ORDERDETAILS.ORDDET_CREATEDBY " + 
-				" WHERE CRM_TRN_ORDERDETAILS.ORDDET_CREATEDDATE >= '" + 
-				getParameters().getStartDate() +
-				"' AND CRM_TRN_ORDERDETAILS.ORDDET_CREATEDDATE <= '" + 
+		ArrayList<String[]> retval = new ArrayList<String[]>();
+		
+		String query = "SELECT CRM_TRN_PROSPECT.PROSPECT_CREATEDBY,CRM_TRN_PROSPECT.PROSPECT_CREATEDDATE,CRM_MST_REFVALUES.REFVAL_DISPLAYVALUE,CRM_MST_REFVALUES_1.REFVAL_DISPLAYVALUE " + 
+				" FROM (CRM_TRN_PROSPECT INNER JOIN CRM_MST_REFVALUES ON CRM_TRN_PROSPECT.PROSPECT_OOSRTPREASONID = CRM_MST_REFVALUES.REFVAL_REFVALID) INNER JOIN CRM_MST_REFVALUES AS CRM_MST_REFVALUES_1 ON CRM_TRN_PROSPECT.PROSPECT_SRCOFCHARGEID = CRM_MST_REFVALUES_1.REFVAL_REFVALID " + 
+				" WHERE CRM_TRN_PROSPECT.PROSPECT_CREATEDDATE >= '" + 
+				getParameters().getStartDate() + 
+				"' AND CRM_TRN_PROSPECT.PROSPECT_CREATEDDATE <= '" + 
 				getParameters().getEndDate() + 
-				"' "; 
+				"' AND CRM_MST_REFVALUES.REFVAL_DISPLAYVALUE is not null" ;
 		
-		retval = new ArrayList<String[]>();
-
-		Aggregation reportGrainData = new Aggregation();
-
-		String userID, reportGrain, salesAmount;
-		
-		//don't assign time grain just yet. in case this is a non-time report, because the timegrain param is not guaranteed to be set 
-		int timeGrain, userGrain;
-		
+		roster = new ZorgRoster();
+		roster.setChildReport(true);
 		roster.getParameters().setAgentNames(getParameters().getAgentNames());
 		roster.getParameters().setTeamNames(getParameters().getTeamNames());
 		roster.load();
 		
-		for(String[] row:  dbConnection.runQuery(ordersQuery))
-		{
-			userID = row[0];	
+		Aggregation reportGrainData = new Aggregation();
 
-			if(roster.hasUser(userID) )
+		String driver;
+		String userID;
+		String reportGrain; 
+		
+		//don't assign time grain just yet. in case this is a non-time report, because the timegrain param is not guaranteed to be set 
+		int timeGrain, dateFormat;
+		
+		for(String[] row : dbConnection.runQuery(query))
+		{
+			userID = row[0];
+			driver = row[2] + "-" + row[3];
+
+			if(roster.hasUser(userID))
 			{
-				salesAmount = row[2];
-				
-				//time grain for time reports
-				if(isTimeTrendReport())
-				{
-					timeGrain = Integer.parseInt(getParameters().getTimeGrain());
-					reportGrain = TimeGrains.getDateGrain(timeGrain, DateParser.convertSQLDateToGregorian(row[1]));
-				}
-				else //if stack
-				{
-					userGrain = Integer.parseInt(getParameters().getUserGrain());
-					reportGrain = UserGrains.getUserGrain(userGrain,roster.getUser(userID));
-				}
-				
+				timeGrain = Integer.parseInt(getParameters().getTimeGrain());
+				dateFormat = Integer.parseInt(getParameters().getDateFormat());
+				reportGrain = DateFormatter.getFormattedDate(DateParser.convertSQLDateToGregorian(row[1]), timeGrain, dateFormat);
+
 				reportGrainData.addDatum(reportGrain);
-				reportGrainData.getDatum(reportGrain).addAttribute(SALES_AMTS_ATTR);
-				reportGrainData.getDatum(reportGrain).addData(SALES_AMTS_ATTR, salesAmount);
+				reportGrainData.getDatum(reportGrain).addAttribute(driver);
+				reportGrainData.getDatum(reportGrain).addData(driver, userID);	
 			}
 		}
 		
@@ -212,16 +197,14 @@ public final class RealtimeSales extends Report implements DataAttributes
 			logInfoMessage( "Query " + queryStats.getKey() + ": " + queryStats.getValue());
 		}
 
-		//format the output
-		double finalSales;
-		retval = new ArrayList<String[]>();
 		for(String grain : reportGrainData.getDatumIDList())
 		{
-			finalSales = Statistics.getTotal(reportGrainData.getDatum(grain).getAttributeData(SALES_AMTS_ATTR));
-
-			retval.add(new String[]{grain, NumberFormatter.convertToCurrency(finalSales) });
+			for(String[] row : Filter.filterTopDrivers(reportGrainData.getDatum(grain), Integer.parseInt(getParameters().getNumDrivers())))
+			{
+				retval.add(new String[]{grain, row[0], row[1] });
+			}
 		}
-
+		
 		return retval;
 	}
 
@@ -254,16 +237,9 @@ public final class RealtimeSales extends Report implements DataAttributes
 	{
 		ArrayList<String> retval = new ArrayList<String>();
 		
-		if(isTimeTrendReport())
-		{
-			retval.add("Date Grain");
-		}
-		else if(isStackReport())
-		{
-			retval.add("User Grain");
-		}
-		
-		retval.add("Sales ($)");
+		retval.add("Date");
+		retval.add("Driver");
+		retval.add("Count");
 		
 		return retval;
 	}

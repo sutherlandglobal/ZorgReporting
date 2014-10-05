@@ -1,22 +1,8 @@
 /**
  * 
  */
-package zorg.report;
+package com.sutherland.zorg.report;
 
-
-import helios.api.report.frontend.ReportFrontEndGroups;
-import helios.data.Aggregation;
-import helios.data.granularity.time.TimeGrains;
-import helios.database.connection.SQL.ConnectionFactory;
-import helios.database.connection.SQL.RemoteConnection;
-import helios.date.parsing.DateParser;
-import helios.exceptions.DatabaseConnectionCreationException;
-import helios.exceptions.ExceptionFormatter;
-import helios.exceptions.ReportSetupException;
-import helios.logging.LogIDFactory;
-import helios.report.Report;
-import helios.report.parameters.groups.ReportParameterGroups;
-import helios.util.results.Filter;
 
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -26,44 +12,57 @@ import org.apache.log4j.Level;
 import org.apache.log4j.Logger;
 import org.apache.log4j.MDC;
 
-import zorg.datasources.DatabaseConfigs;
-
+import com.sutherland.helios.api.report.frontend.ReportFrontEndGroups;
+import com.sutherland.helios.data.Aggregation;
+import com.sutherland.helios.data.attributes.DataAttributes;
+import com.sutherland.helios.data.granularity.user.UserGrains;
+import com.sutherland.helios.database.connection.SQL.ConnectionFactory;
+import com.sutherland.helios.database.connection.SQL.RemoteConnection;
+import com.sutherland.helios.date.formatting.DateFormatter;
+import com.sutherland.helios.date.parsing.DateParser;
+import com.sutherland.helios.exceptions.DatabaseConnectionCreationException;
+import com.sutherland.helios.exceptions.ExceptionFormatter;
+import com.sutherland.helios.exceptions.ReportSetupException;
+import com.sutherland.helios.logging.LogIDFactory;
+import com.sutherland.helios.report.Report;
+import com.sutherland.helios.report.parameters.groups.ReportParameterGroups;
+import com.sutherland.zorg.datasources.DatabaseConfigs;
 
 /**
  * @author Jason Diamond
  *
  */
-public class TopCaseDrivers extends Report
+public final class SalesCount extends Report implements DataAttributes
 {
 	private RemoteConnection dbConnection;
 	private ZorgRoster roster;
 	private final String dbPropFile = DatabaseConfigs.PRIVATE_LABEL_PROD_DB;
-	private final static Logger logger = Logger.getLogger(TopCaseDrivers.class);
-	
+	private final static Logger logger = Logger.getLogger(SalesCount.class);
+
 	public static String uiGetReportName()
 	{
-		return "Top Case Drivers";
+		return "Sales Count";
 	}
 	
 	public static String uiGetReportDesc()
 	{
-		return "Determines the most common case categories.";
+		return "The total count of sales.";
 	}
 	
 	public final static LinkedHashMap<String, String> uiSupportedReportFrontEnds = ReportFrontEndGroups.BASIC_METRIC_FRONTENDS;
 	
-	public final static LinkedHashMap<String, ArrayList<String>> uiReportParameters = ReportParameterGroups.DRIVERS_REPORT_PARAMETERS;
+	public final static LinkedHashMap<String, ArrayList<String>> uiReportParameters = ReportParameterGroups.BASIC_METRIC_REPORT_PARAMETERS;
 	
 	/**
 	 * Build the report object.
 	 * 
 	 * @throws ReportSetupException		If a failure occurs during creation of the report or its resources.
 	 */
-	public TopCaseDrivers() throws ReportSetupException
+	public SalesCount() throws ReportSetupException
 	{
 		super();
 	}
-	
+
 	/* (non-Javadoc)
 	 * @see helios.Report#setupReport()
 	 */
@@ -74,8 +73,8 @@ public class TopCaseDrivers extends Report
 
 		try
 		{
-			reportName = TopCaseDrivers.uiGetReportName();
-			reportDesc = TopCaseDrivers.uiGetReportDesc();
+			reportName = SalesCount.uiGetReportName();
+			reportDesc = SalesCount.uiGetReportDesc();
 			
 			for(Entry<String, ArrayList<String>> reportType : uiReportParameters.entrySet())
 			{
@@ -126,7 +125,7 @@ public class TopCaseDrivers extends Report
 			factory.load(dbPropFile);
 			
 			dbConnection = factory.getConnection();
-		} 
+		}
 		catch(DatabaseConnectionCreationException e )
 		{
 			setErrorMessage("DatabaseConnectionCreationException on attempt to access database");
@@ -151,58 +150,80 @@ public class TopCaseDrivers extends Report
 	@Override
 	protected ArrayList<String[]> runReport() throws Exception
 	{
-		ArrayList<String[]> retval = new ArrayList<String[]>();
-		
-		String query = "SELECT CRM_TRN_PROSPECT.PROSPECT_CREATEDBY,CRM_TRN_PROSPECT.PROSPECT_CREATEDDATE,CRM_MST_REFVALUES.REFVAL_DISPLAYVALUE,CRM_MST_REFVALUES_1.REFVAL_DISPLAYVALUE " + 
-				" FROM (CRM_TRN_PROSPECT INNER JOIN CRM_MST_REFVALUES ON CRM_TRN_PROSPECT.PROSPECT_OOSRTPREASONID = CRM_MST_REFVALUES.REFVAL_REFVALID) INNER JOIN CRM_MST_REFVALUES AS CRM_MST_REFVALUES_1 ON CRM_TRN_PROSPECT.PROSPECT_SRCOFCHARGEID = CRM_MST_REFVALUES_1.REFVAL_REFVALID " + 
-				" WHERE CRM_TRN_PROSPECT.PROSPECT_CREATEDDATE >= '" + 
+		ArrayList<String[]> retval = null;
+
+		String salesQuery = "SELECT " +
+				" CRM_MST_USER.USER_USERID,CRM_TRN_ORDERDETAILS.ORDDET_CREATEDDATE, " +
+				" CRM_TRN_ORDERDETAILS.ORDDET_AMOUNT " + 
+				" FROM CRM_MST_USER INNER JOIN CRM_TRN_ORDERDETAILS ON CRM_MST_USER.USER_USERID = CRM_TRN_ORDERDETAILS.ORDDET_CREATEDBY " + 
+				" WHERE CRM_TRN_ORDERDETAILS.ORDDET_CREATEDDATE >= '" + 
 				getParameters().getStartDate() + 
-				"' AND CRM_TRN_PROSPECT.PROSPECT_CREATEDDATE <= '" + 
+				"' AND CRM_TRN_ORDERDETAILS.ORDDET_CREATEDDATE <= '" + 
 				getParameters().getEndDate() + 
-				"' AND CRM_MST_REFVALUES.REFVAL_DISPLAYVALUE is not null" ;
-		
+				"' ";
+
+		Aggregation reportGrainData = new Aggregation();
+
+		String userID, salesAmount, reportGrain;
+
+		int timeGrain, userGrain, dateFormat ;
+
 		roster = new ZorgRoster();
 		roster.setChildReport(true);
 		roster.getParameters().setAgentNames(getParameters().getAgentNames());
 		roster.getParameters().setTeamNames(getParameters().getTeamNames());
 		roster.load();
 		
-		Aggregation reportGrainData = new Aggregation();
-
-		String driver;
-		String userID;
-		String reportGrain; 
-		
-		//don't assign time grain just yet. in case this is a non-time report, because the timegrain param is not guaranteed to be set 
-		int timeGrain;
-		
-		for(String[] row : dbConnection.runQuery(query))
+		for(String[] row:  dbConnection.runQuery(salesQuery))
 		{
 			userID = row[0];
-			driver = row[2] + "-" + row[3];
 
-			if(roster.hasUser(userID))
+			if(roster.hasUser(userID) )
 			{
-				timeGrain = Integer.parseInt(getParameters().getTimeGrain());
-				reportGrain = TimeGrains.getDateGrain(timeGrain, DateParser.convertSQLDateToGregorian(row[1]));
+				salesAmount = row[2];
 
+				//time grain for time reports
+				if(isTimeTrendReport())
+				{
+					timeGrain = Integer.parseInt(getParameters().getTimeGrain());
+					dateFormat = Integer.parseInt(getParameters().getDateFormat());
+					reportGrain = DateFormatter.getFormattedDate(DateParser.convertSQLDateToGregorian(row[1]), timeGrain, dateFormat);
+				}
+				else //if stack
+				{
+					//is stack report
+					userGrain = Integer.parseInt(getParameters().getUserGrain());
+					reportGrain = UserGrains.getUserGrain(userGrain, roster.getUser(userID));
+				}
+				
 				reportGrainData.addDatum(reportGrain);
-				reportGrainData.getDatum(reportGrain).addAttribute(driver);
-				reportGrainData.getDatum(reportGrain).addData(driver, userID);	
+				reportGrainData.getDatum(reportGrain).addAttribute(SALES_AMTS_ATTR);
+				reportGrainData.getDatum(reportGrain).addData(SALES_AMTS_ATTR, salesAmount);
 			}
 		}
-		
+
 		for( Entry<String, String> queryStats  : dbConnection.getStatistics().entrySet())
 		{
 			logInfoMessage( "Query " + queryStats.getKey() + ": " + queryStats.getValue());
 		}
+		
+		/////////////////
+		//processing the buckets
+		//want to put this into it's own method, can't think of a way without introducing terrible coupling
 
-		for(String grain : reportGrainData.getDatumIDList())
+		retval =  new ArrayList<String[]>();
+
+		int salesCount;
+		for(String user : reportGrainData.getDatumIDList())
 		{
-			for(String[] row : Filter.filterTopDrivers(reportGrainData.getDatum(grain), Integer.parseInt(getParameters().getNumDrivers())))
+			//not all users will have sales
+			salesCount = 0;
+			if( reportGrainData.getDatum(user).getAttributeData(SALES_AMTS_ATTR) != null)
 			{
-				retval.add(new String[]{grain, row[0], row[1] });
+				salesCount = reportGrainData.getDatum(user).getAttributeData(SALES_AMTS_ATTR).size();
 			}
+
+			retval.add(new String[]{user, "" + salesCount }) ;
 		}
 		
 		return retval;
@@ -237,9 +258,16 @@ public class TopCaseDrivers extends Report
 	{
 		ArrayList<String> retval = new ArrayList<String>();
 		
-		retval.add("Date");
-		retval.add("Driver");
-		retval.add("Count");
+		if(isTimeTrendReport())
+		{
+			retval.add("Date Grain");
+		}
+		else if(isStackReport())
+		{
+			retval.add("User Grain");
+		}
+		
+		retval.add("Sales Count");
 		
 		return retval;
 	}
