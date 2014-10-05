@@ -251,7 +251,7 @@ public final class CallVolume extends Report implements DataAttributes
 		
 		for( Entry<String, String> queryStats  : dbConnection.getStatistics().entrySet())
 		{
-			logErrorMessage( "Query " + queryStats.getKey() + ": " + queryStats.getValue());
+			logInfoMessage( "Query " + queryStats.getKey() + ": " + queryStats.getValue());
 		}
 
 		double finalNumCalls;
